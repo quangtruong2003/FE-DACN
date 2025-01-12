@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "132683917520",
+    "project_id": "appbanlinhkien",
+    "storage_bucket": "appbanlinhkien.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:132683917520:android:7cc6db4bce97451c5c96d5",
+        "android_client_info": {
+          "package_name": "com.quangtruong.appbanlinhkien"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDts3imGpqKSEQtBn7PvfPUbaCSgLHcD90"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
