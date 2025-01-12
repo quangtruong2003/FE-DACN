@@ -410,6 +410,7 @@ public class ActivityAdd extends AppCompatActivity {
         });
     }
 
+
     private void addProductWithImage(CreateProductRequest request) {
         apiService.addProduct(request).enqueue(new Callback<ProductDTO>() {
             @Override
