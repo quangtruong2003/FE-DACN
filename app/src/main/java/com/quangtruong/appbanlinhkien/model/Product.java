@@ -5,7 +5,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 public class Product implements Serializable {
-    private Long productID;
+    private Long productId;
     private String productName;
     private Long categoryId;
     private String categoryName;
@@ -15,35 +15,33 @@ public class Product implements Serializable {
     private int unitsInStock;
     private String description;
     private List<String> images;
-    private boolean isActive;
+    private boolean active;
 
     // Constructors, Getters, and Setters
 
     public Product() {
     }
 
-    public Product(Long productID, String productName, Long categoryId, String categoryName, Long supplierId, String supplierName, BigDecimal unitPrice, int unitsInStock, String description, List<String> images, boolean isActive) {
-        this.productID = productID;
+    public Product(Long productId, String productName, Long categoryId, Long supplierId, String categoryName, String supplierName, BigDecimal unitPrice, int unitsInStock, String description, List<String> images, boolean active) {
+        this.productId = productId;
         this.productName = productName;
         this.categoryId = categoryId;
-        this.categoryName = categoryName;
         this.supplierId = supplierId;
+        this.categoryName = categoryName;
         this.supplierName = supplierName;
         this.unitPrice = unitPrice;
         this.unitsInStock = unitsInStock;
         this.description = description;
         this.images = images;
-        this.isActive = isActive;
+        this.active = active;
     }
 
-    // Getters and Setters
-
-    public Long getProductID() {
-        return productID;
+    public Long getProductId() {
+        return productId;
     }
 
-    public void setProductID(Long productID) {
-        this.productID = productID;
+    public void setProductId(Long productId) {
+        this.productId = productId;
     }
 
     public String getProductName() {
@@ -118,12 +116,11 @@ public class Product implements Serializable {
         this.images = images;
     }
 
-    public boolean isActive() {
-        return isActive;
+    public boolean active() {
+        return active;
     }
 
     public void setActive(boolean active) {
-        isActive = active;
+        active = active;
     }
-
 }

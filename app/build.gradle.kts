@@ -15,9 +15,6 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
-        // Thêm BASE_URL vào BuildConfig
-        //buildConfigField "String", "BASE_URL", "\"http://10.0.2.2:8080/\""
     }
 
     buildTypes {
@@ -32,9 +29,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-    buildFeatures {
-        buildConfig = true
     }
 }
 
@@ -54,5 +48,14 @@ dependencies {
     implementation (libs.glide)
     annotationProcessor (libs.compiler)
     implementation(libs.okhttp)
+    implementation (libs.swiperefreshlayout)
+    implementation (libs.gson)
 
+
+
+    implementation("com.cloudinary:cloudinary-android:3.0.2")
+    implementation("com.github.bumptech.glide:glide:4.16.0")
+    implementation("androidx.constraintlayout:constraintlayout:2.2.0")
+    implementation("androidx.navigation:navigation-fragment:2.7.7")
+    implementation("androidx.navigation:navigation-ui:2.7.7")
 }

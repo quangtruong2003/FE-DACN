@@ -1,21 +1,25 @@
 package com.quangtruong.appbanlinhkien.admin;
 
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
-import android.view.View;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.textfield.TextInputEditText;
-import com.quangtruong.appbanlinhkien.ActivityAdd;
 import com.quangtruong.appbanlinhkien.R;
 import com.quangtruong.appbanlinhkien.adapter.ProductAdapter;
 import com.quangtruong.appbanlinhkien.api.ApiService;
@@ -29,7 +33,7 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class ProductActivity extends AppCompatActivity {
+public class ProductActivity extends AppCompatActivity implements ProductAdapter.ProductClickListener {
 
     private Toolbar toolbar;
     private TextInputEditText searchEditText;
@@ -38,6 +42,9 @@ public class ProductActivity extends AppCompatActivity {
     private ProductAdapter productAdapter;
     private List<Product> productList;
     private ApiService apiService;
+    private SwipeRefreshLayout swipeRefreshLayout;
+    private ActivityResultLauncher<Intent> addProductLauncher;
+    private ActivityResultLauncher<Intent> editProductLauncher;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,19 +53,37 @@ public class ProductActivity extends AppCompatActivity {
 
         toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-        getSupportActionBar().setDisplayHomeAsUpEnabled(true); // Hiển thị nút back
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         toolbar.setNavigationOnClickListener(v -> finish());
 
         searchEditText = findViewById(R.id.search_edit_text);
         productRecyclerView = findViewById(R.id.product_list);
         fabAddProduct = findViewById(R.id.fab_add_product);
+        swipeRefreshLayout = findViewById(R.id.swipe_refresh_layout);
 
         apiService = new ApiUtils(this).createService(ApiService.class);
 
         productList = new ArrayList<>();
-        productAdapter = new ProductAdapter(productList, this);
+        productAdapter = new ProductAdapter(productList, this, this);
         productRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         productRecyclerView.setAdapter(productAdapter);
+
+        addProductLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == Activity.RESULT_OK) {
+                        refreshData();
+                    }
+                });
+
+        editProductLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == Activity.RESULT_OK) {
+                        refreshData();
+                    }
+                }
+        );
 
         loadProducts();
 
@@ -69,7 +94,6 @@ public class ProductActivity extends AppCompatActivity {
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                // Lọc danh sách sản phẩm theo từ khóa tìm kiếm
                 productAdapter.getFilter().filter(s);
             }
 
@@ -78,26 +102,39 @@ public class ProductActivity extends AppCompatActivity {
             }
         });
 
-        fabAddProduct.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                // Chuyển đến màn hình thêm sản phẩm
-                Intent intent = new Intent(ProductActivity.this, ActivityAdd.class);
-                startActivity(intent);
-            }
+        fabAddProduct.setOnClickListener(v -> {
+            Intent intent = new Intent(ProductActivity.this, ProductController.class);
+            addProductLauncher.launch(intent);
         });
+
+        swipeRefreshLayout.setOnRefreshListener(() -> {
+            refreshData();
+        });
+
+    }
+
+    private void refreshData() {
+        productList.clear();
+        productAdapter.notifyDataSetChanged();
+        loadProducts();
     }
 
     private void loadProducts() {
-        // Gọi API lấy danh sách sản phẩm
+        swipeRefreshLayout.setRefreshing(true);
+
         apiService.getAllProducts().enqueue(new Callback<List<Product>>() {
             @Override
             public void onResponse(Call<List<Product>> call, Response<List<Product>> response) {
+                swipeRefreshLayout.setRefreshing(false);
+
                 if (response.isSuccessful()) {
                     productList.clear();
-                    productList.addAll(response.body());
-                    productAdapter.notifyDataSetChanged();
-                    Log.d("ProductActivity", "Loaded " + productList.size() + " products");
+                    List<Product> newProducts = response.body();
+                    if (newProducts != null && !newProducts.isEmpty()) {
+                        productList.addAll(newProducts);
+                        productAdapter.notifyDataSetChanged();
+                        Log.d("ProductActivity", "Loaded " + productList.size() + " products");
+                    }
                 } else {
                     Toast.makeText(ProductActivity.this, "Failed to load products", Toast.LENGTH_SHORT).show();
                 }
@@ -105,8 +142,58 @@ public class ProductActivity extends AppCompatActivity {
 
             @Override
             public void onFailure(Call<List<Product>> call, Throwable t) {
+                swipeRefreshLayout.setRefreshing(false);
                 Toast.makeText(ProductActivity.this, "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
                 Log.e("ProductActivity", "Error loading products", t);
+            }
+        });
+    }
+
+    @Override
+    public void onProductClick(Long productId) {
+        Log.d("ProductActivity", "onProductClick: productId=" + productId); // Log productId
+        Intent intent = new Intent(this, ProductController.class);
+        intent.putExtra("PRODUCT_ID", productId);
+        editProductLauncher.launch(intent);
+    }
+
+    @Override
+    public void onProductLongClick(Long productId, String productName) {
+        Log.d("ProductActivity", "onProductLongClick: productId=" + productId + ", productName=" + productName);
+        new AlertDialog.Builder(this)
+                .setTitle("Xóa sản phẩm")
+                .setMessage("Bạn có chắc chắn muốn xóa sản phẩm " + productName + "?")
+                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        // Tiếp tục với xóa
+                        deleteProduct(productId);
+                    }
+                })
+                .setNegativeButton(android.R.string.no, null)
+                //.setCancelable(false)
+                .setIcon(android.R.drawable.ic_dialog_alert)
+                .show();
+    }
+
+    private void deleteProduct(Long productId) {
+        if (productId == null) {
+            Log.e("ProductActivity", "deleteProduct: productId is null");
+            return;
+        }
+        apiService.deleteProduct(productId).enqueue(new Callback<Void>() {
+            @Override
+            public void onResponse(Call<Void> call, Response<Void> response) {
+                if (response.isSuccessful()) {
+                    Toast.makeText(ProductActivity.this, "Xóa sản phẩm thành công", Toast.LENGTH_SHORT).show();
+                    refreshData();
+                } else {
+                    Toast.makeText(ProductActivity.this, "Xóa sản phẩm thất bại", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<Void> call, Throwable t) {
+                Toast.makeText(ProductActivity.this, "Lỗi: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }

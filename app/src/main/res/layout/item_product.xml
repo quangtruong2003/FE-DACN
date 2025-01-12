@@ -5,7 +5,6 @@
     android:orientation="horizontal"
     android:padding="10dp">
 
-    <!-- ImageView cho hình ảnh sản phẩm -->
     <ImageView
         android:id="@+id/product_image"
         android:layout_width="80dp"
@@ -14,14 +13,12 @@
         android:scaleType="centerCrop"
         android:src="@drawable/placeholder_image" />
 
-    <!-- LinearLayout cho thông tin sản phẩm -->
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:orientation="vertical">
 
-        <!-- TextView cho tên sản phẩm -->
         <TextView
             android:id="@+id/product_name"
             android:layout_width="wrap_content"
@@ -30,7 +27,6 @@
             android:textSize="18sp"
             android:textStyle="bold" />
 
-        <!-- TextView cho danh mục sản phẩm -->
         <TextView
             android:id="@+id/product_category"
             android:layout_width="wrap_content"
@@ -38,7 +34,6 @@
             android:layout_marginTop="4dp"
             android:text="Danh mục: Điện tử" />
 
-        <!-- TextView cho nhà cung cấp -->
         <TextView
             android:id="@+id/product_supplier"
             android:layout_width="wrap_content"
@@ -46,13 +41,18 @@
             android:layout_marginTop="4dp"
             android:text="Nhà cung cấp: ABC" />
 
-        <!-- TextView cho giá sản phẩm -->
         <TextView
             android:id="@+id/product_price"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
             android:text="Giá: 100,000 VNĐ" />
+        <TextView
+            android:id="@+id/product_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Trạng thái: "/>
 
     </LinearLayout>
 

@@ -15,10 +15,14 @@ import retrofit2.http.Body;
 import java.util.List;
 
 import retrofit2.Call;
+import retrofit2.http.DELETE;
 import retrofit2.http.GET;
 import retrofit2.http.Multipart;
 import retrofit2.http.POST;
+import retrofit2.http.PUT;
 import retrofit2.http.Part;
+import retrofit2.http.Path;
+import retrofit2.http.Query;
 
 public interface ApiService {
     @POST("api/auth/login")
@@ -43,4 +47,15 @@ public interface ApiService {
     @GET("api/suppliers")
     Call<List<Supplier>> getAllSuppliers();
 
+    @GET("api/admin/products/exists")
+    Call<Boolean> checkProductNameExists(@Query("name") String productName);
+
+    @GET("api/admin/products/{id}")
+    Call<ProductDTO> getProduct(@Path("id") Long productId);
+
+    @PUT("api/admin/products/{id}")
+    Call<ProductDTO> updateProduct(@Path("id") Long productId, @Body CreateProductRequest request);
+
+    @DELETE("api/admin/products/{id}")
+    Call<Void> deleteProduct(@Path("id") Long productId);
 }
