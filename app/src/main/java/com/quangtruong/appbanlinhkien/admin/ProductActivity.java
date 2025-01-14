@@ -8,11 +8,14 @@ import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SearchView;
 import androidx.appcompat.widget.Toolbar;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -36,7 +39,6 @@ import retrofit2.Response;
 public class ProductActivity extends AppCompatActivity implements ProductAdapter.ProductClickListener {
 
     private Toolbar toolbar;
-    private TextInputEditText searchEditText;
     private RecyclerView productRecyclerView;
     private FloatingActionButton fabAddProduct;
     private ProductAdapter productAdapter;
@@ -56,7 +58,6 @@ public class ProductActivity extends AppCompatActivity implements ProductAdapter
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         toolbar.setNavigationOnClickListener(v -> finish());
 
-        searchEditText = findViewById(R.id.search_edit_text);
         productRecyclerView = findViewById(R.id.product_list);
         fabAddProduct = findViewById(R.id.fab_add_product);
         swipeRefreshLayout = findViewById(R.id.swipe_refresh_layout);
@@ -87,21 +88,6 @@ public class ProductActivity extends AppCompatActivity implements ProductAdapter
 
         loadProducts();
 
-        searchEditText.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-            }
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-                productAdapter.getFilter().filter(s);
-            }
-
-            @Override
-            public void afterTextChanged(Editable s) {
-            }
-        });
-
         fabAddProduct.setOnClickListener(v -> {
             Intent intent = new Intent(ProductActivity.this, ProductController.class);
             addProductLauncher.launch(intent);
@@ -111,6 +97,37 @@ public class ProductActivity extends AppCompatActivity implements ProductAdapter
             refreshData();
         });
 
+    }
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_search, menu);
+
+        MenuItem searchItem = menu.findItem(R.id.action_search);
+        SearchView searchView = (SearchView) searchItem.getActionView();
+        searchView.setQueryHint(getString(R.string.search));
+
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                return false;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                if (productAdapter != null) {
+                    // Chỉ filter khi newText không rỗng
+                    if (!newText.isEmpty()) {
+                        productAdapter.getFilter().filter(newText);
+                    } else {
+                        // Nếu newText rỗng, hiển thị lại toàn bộ danh sách
+                        productAdapter.setProducts(productList);
+                    }
+                }
+                return true;
+            }
+        });
+
+        return true;
     }
 
     private void refreshData() {
@@ -153,6 +170,7 @@ public class ProductActivity extends AppCompatActivity implements ProductAdapter
     public void onProductClick(Long productId) {
         Log.d("ProductActivity", "onProductClick: productId=" + productId); // Log productId
         Intent intent = new Intent(this, ProductController.class);
+        intent.putExtra("action", "edit");
         intent.putExtra("PRODUCT_ID", productId);
         editProductLauncher.launch(intent);
     }
@@ -183,6 +201,7 @@ public class ProductActivity extends AppCompatActivity implements ProductAdapter
         apiService.deleteProduct(productId).enqueue(new Callback<Void>() {
             @Override
             public void onResponse(Call<Void> call, Response<Void> response) {
+                Log.d("deleteProduct", response.toString());
                 if (response.isSuccessful()) {
                     Toast.makeText(ProductActivity.this, "Xóa sản phẩm thành công", Toast.LENGTH_SHORT).show();
                     refreshData();
@@ -194,6 +213,7 @@ public class ProductActivity extends AppCompatActivity implements ProductAdapter
             @Override
             public void onFailure(Call<Void> call, Throwable t) {
                 Toast.makeText(ProductActivity.this, "Lỗi: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                Log.e("API_Error", "Delete product failed", t);
             }
         });
     }

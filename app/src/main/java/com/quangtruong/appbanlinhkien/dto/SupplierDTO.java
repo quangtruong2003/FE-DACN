@@ -1,6 +1,8 @@
-package com.quangtruong.appbanlinhkien.model;
+package com.quangtruong.appbanlinhkien.dto;
 
-public class Supplier {
+import java.io.Serializable;
+
+public class SupplierDTO implements Serializable {
     private Long supplierId;
     private String supplierName;
     private String contactName;
@@ -10,10 +12,10 @@ public class Supplier {
     private String website;
 
     // Constructors
-    public Supplier() {
+    public SupplierDTO() {
     }
 
-    public Supplier(Long supplierId, String supplierName, String contactName, String address, String phone, String email, String website) {
+    public SupplierDTO(Long supplierId, String supplierName, String contactName, String address, String phone, String email, String website) {
         this.supplierId = supplierId;
         this.supplierName = supplierName;
         this.contactName = contactName;

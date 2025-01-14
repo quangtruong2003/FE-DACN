@@ -29,7 +29,7 @@ import java.util.Locale;
 public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductViewHolder> implements Filterable {
 
     private List<Product> productList;
-    private List<Product> productListFiltered;
+    private List<Product> productListFull;
     private Context context;
     private ProductClickListener productClickListener;
 
@@ -38,12 +38,16 @@ public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductV
         void onProductLongClick(Long productId, String productName);
     }
 
-    // Constructor với tham số ProductClickListener
     public ProductAdapter(List<Product> productList, Context context, ProductClickListener listener) {
         this.productList = productList;
-        this.productListFiltered = productList;
+        this.productListFull = new ArrayList<>(productList); // Copy of the original list
         this.context = context;
         this.productClickListener = listener;
+    }
+    public void setProducts(List<Product> products) {
+        this.productList = products;
+        this.productListFull = new ArrayList<>(products); // Copy of the original list
+        notifyDataSetChanged();
     }
 
     @NonNull
@@ -55,16 +59,7 @@ public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductV
 
     @Override
     public void onBindViewHolder(@NonNull ProductViewHolder holder, int position) {
-        Product product = productListFiltered.get(position);
-        // Debug: Log các giá trị để kiểm tra
-        Log.d("ProductAdapter", "onBindViewHolder: position=" + position);
-        if (product != null) {
-            Log.d("ProductAdapter", "onBindViewHolder: product.getProductID()=" + product.getProductId());
-            Log.d("ProductAdapter", "onBindViewHolder: product.getProductName()=" + product.getProductName());
-        } else {
-            Log.e("ProductAdapter", "onBindViewHolder: product is null at position " + position);
-        }
-
+        Product product = productList.get(position);
         holder.productId = product.getProductId();
         holder.tvProductName.setText(product.getProductName());
         holder.tvProductCategory.setText(String.format("Danh mục: %s", product.getCategoryName()));
@@ -83,7 +78,6 @@ public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductV
             holder.tvProductStatus.setTextColor(context.getResources().getColor(R.color.red)); // Màu đỏ
             holder.tvProductStatus.setTypeface(null, Typeface.BOLD); // In đậm
         }
-        // Hiển thị hình ảnh
         if (product.getImages() != null && !product.getImages().isEmpty()) {
             Glide.with(context)
                     .load(product.getImages().get(0))
@@ -101,57 +95,59 @@ public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductV
 
     @Override
     public int getItemCount() {
-        return productListFiltered.size();
+        return productList.size();
     }
 
     @Override
     public Filter getFilter() {
-        return new Filter() {
-            @Override
-            protected FilterResults performFiltering(CharSequence charSequence) {
-                String charString = charSequence.toString();
-                if (charString.isEmpty()) {
-                    productListFiltered = productList;
-                } else {
-                    List<Product> filteredList = new ArrayList<>();
-                    for (Product product : productList) {
-                        if (product.getProductName().toLowerCase().contains(charString.toLowerCase())) {
-                            filteredList.add(product);
-                        }
-                    }
-                    productListFiltered = filteredList;
-                }
-
-                FilterResults filterResults = new FilterResults();
-                filterResults.values = productListFiltered;
-                return filterResults;
-            }
-
-            @Override
-            protected void publishResults(CharSequence charSequence, FilterResults filterResults) {
-                productListFiltered = (ArrayList<Product>) filterResults.values;
-                notifyDataSetChanged();
-            }
-        };
+        return productFilter;
     }
+    private Filter productFilter = new Filter() {
+        @Override
+        protected FilterResults performFiltering(CharSequence constraint) {
+            List<Product> filteredList = new ArrayList<>();
+
+            if (constraint == null || constraint.length() == 0) {
+                filteredList.addAll(productListFull);
+            } else {
+                String filterPattern = constraint.toString().toLowerCase().trim();
+
+                for (Product item : productListFull) {
+                    if (item.getProductName().toLowerCase().contains(filterPattern)) {
+                        filteredList.add(item);
+                    }
+                }
+            }
+
+            FilterResults results = new FilterResults();
+            results.values = filteredList;
+            return results;
+        }
+
+        @Override
+        protected void publishResults(CharSequence constraint, FilterResults results) {
+            productList.clear();
+            productList.addAll((List) results.values);
+            notifyDataSetChanged();
+        }
+    };
 
     public class ProductViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener, View.OnLongClickListener {
         Long productId;
-        TextView tvProductName;
-        TextView tvProductCategory;
-        TextView tvProductSupplier;
-        TextView tvProductPrice;
+        TextView tvProductName, tvProductCategory, tvProductSupplier, tvProductPrice, tvProductStatus;
         ImageView ivProductImage;
-        TextView tvProductStatus;
 
         public ProductViewHolder(View itemView) {
+
             super(itemView);
             tvProductName = itemView.findViewById(R.id.product_name);
             tvProductCategory = itemView.findViewById(R.id.product_category);
             tvProductSupplier = itemView.findViewById(R.id.product_supplier);
             tvProductPrice = itemView.findViewById(R.id.product_price);
             ivProductImage = itemView.findViewById(R.id.product_image);
-            tvProductStatus = itemView.findViewById(R.id.product_status); // Ánh xạ view
+            tvProductStatus = itemView.findViewById(R.id.product_status);
+            itemView.setOnClickListener(this);
+            itemView.setOnLongClickListener(this);
         }
 
         @Override
@@ -166,7 +162,7 @@ public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductV
             if (productClickListener != null) {
                 int position = getAdapterPosition();
                 if (position != RecyclerView.NO_POSITION) {
-                    productClickListener.onProductLongClick(productId, productListFiltered.get(position).getProductName());
+                    productClickListener.onProductLongClick(productId, productList.get(position).getProductName());
                     return true;
                 }
             }

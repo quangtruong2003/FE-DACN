@@ -3,6 +3,10 @@ package com.quangtruong.appbanlinhkien.api;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import com.fatboyindustrial.gsonjavatime.Converters;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+
 import okhttp3.OkHttpClient;
 import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Retrofit;
@@ -14,9 +18,11 @@ public class ApiUtils {
 
     private static OkHttpClient.Builder httpClient = new OkHttpClient.Builder();
 
+    private static Gson gson = Converters.registerLocalDateTime(new GsonBuilder()).create();// Sửa ở đây
+
     private static Retrofit.Builder builder = new Retrofit.Builder()
             .baseUrl(BASE_URL)
-            .addConverterFactory(GsonConverterFactory.create());
+            .addConverterFactory(GsonConverterFactory.create(gson)); // Sửa ở đây
 
     private static Retrofit retrofit = builder.build();
 

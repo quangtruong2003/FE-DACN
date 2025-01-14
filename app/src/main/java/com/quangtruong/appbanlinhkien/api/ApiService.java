@@ -1,6 +1,7 @@
 package com.quangtruong.appbanlinhkien.api;
 
 import com.quangtruong.appbanlinhkien.dto.ProductDTO;
+import com.quangtruong.appbanlinhkien.dto.SupplierDTO;
 import com.quangtruong.appbanlinhkien.model.AuthResponse;
 import com.quangtruong.appbanlinhkien.model.Category;
 import com.quangtruong.appbanlinhkien.model.LoginRequest;
@@ -23,6 +24,7 @@ import retrofit2.http.PUT;
 import retrofit2.http.Part;
 import retrofit2.http.Path;
 import retrofit2.http.Query;
+import com.quangtruong.appbanlinhkien.dto.CategoryDTO;
 
 public interface ApiService {
     @POST("api/auth/login")
@@ -42,7 +44,7 @@ public interface ApiService {
     Call<ProductDTO> addProduct(@Body CreateProductRequest product);
 
     @GET("api/categories")
-    Call<List<Category>> getAllCategories();
+    Call<List<CategoryDTO>> getAllCategories();
 
     @GET("api/suppliers")
     Call<List<Supplier>> getAllSuppliers();
@@ -58,4 +60,33 @@ public interface ApiService {
 
     @DELETE("api/admin/products/{id}")
     Call<Void> deleteProduct(@Path("id") Long productId);
+
+    //Category
+    @POST("api/admin/categories/add")
+    Call<CategoryDTO> createCategory(@Body Category category);
+
+    @PUT("api/admin/categories/{id}")
+    Call<CategoryDTO> updateCategory(@Path("id") Long id, @Body Category category);
+
+    @DELETE("api/admin/categories/{id}")
+    Call<Void> deleteCategory(@Path("id") Long id);
+
+    @GET("api/admin/categories/{id}")
+    Call<CategoryDTO> getCategoryById(@Path("id") Long categoryId);
+
+    // Supplier
+    @GET("api/admin/suppliers")
+    Call<List<SupplierDTO>> getAllAdminSuppliers();
+
+    @GET("api/admin/suppliers/{id}")
+    Call<SupplierDTO> getSupplierById(@Path("id") Long supplierId);
+
+    @POST("api/admin/suppliers/add")
+    Call<SupplierDTO> createSupplier(@Body Supplier supplier);
+
+    @PUT("api/admin/suppliers/{id}")
+    Call<SupplierDTO> updateSupplier(@Path("id") Long id, @Body Supplier supplier);
+
+    @DELETE("api/admin/suppliers/{id}")
+    Call<Void> deleteSupplier(@Path("id") Long id);
 }

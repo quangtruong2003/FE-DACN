@@ -25,13 +25,10 @@
     <string name="image_upload_failed">Failed to upload image</string>
     <string name="upload_failed">Upload failed</string>
     <string name="admin">Admin</string>
-    <string name="product_management">Quản lý Sản phẩm</string>
     <string name="add_edit_delete_products">Thêm, sửa, xóa sản phẩm</string>
-    <string name="category_management">Quản lý Danh mục</string>
     <string name="add_edit_delete_categories">Thêm, sửa, xóa danh mục</string>
     <string name="order_management">Quản lý Đơn hàng</string>
     <string name="view_update_order_status">Xem, cập nhật trạng thái đơn hàng</string>
-    <string name="supplier_management">Quản lý Nhà cung cấp</string>
     <string name="add_edit_delete_suppliers">Thêm, sửa, xóa nhà cung cấp</string>
     <string name="customer_management">Quản lý Khách hàng</string>
     <string name="add_edit_delete_customers">Thêm, sửa, xóa khách hàng</string>
@@ -39,7 +36,6 @@
     <string name="password">Password</string>
     <string name="login">Login</string>
     <string name="do_not_have_an_account_register">Don\'t have an account? Register</string>
-    <string name="search">Search</string>
     <string name="explore">Explore</string>
     <string name="item_name">Item Name</string>
     <string name="description_item">Description</string>
@@ -58,4 +54,24 @@
     <string name="save_product">Lưu thay đổi</string>
     <string name="active">Trạng thái: Đang hoạt động</string>
     <string name="inactive">Trạng thái: Ngừng hoạt động</string>
+    <string name="edit_category">Sửa danh mục</string>
+    <string name="product_management">Quản lý sản phẩm</string>
+    <string name="update_product">Cập nhật sản phẩm</string>
+    <string name="search">Tìm kiếm</string>
+    <string name="category_management">Quản lý danh mục</string>
+    <string name="add_category">Thêm danh mục</string>
+    <string name="update_category">Cập nhật danh mục</string>
+    <string name="save_category">Lưu danh mục</string>
+    <string name="cancel">Hủy</string>
+    <string name="category_name">Tên danh mục</string>
+    <string name="supplier_management">Quản lý nhà cung cấp</string>
+    <string name="add_supplier">Thêm nhà cung cấp</string>
+    <string name="update_supplier">Cập nhật nhà cung cấp</string>
+    <string name="save_supplier">Lưu nhà cung cấp</string>
+    <string name="supplier_name">Tên nhà cung cấp</string>
+    <string name="contact_name">Tên liên hệ</string>
+    <string name="address">Địa chỉ</string>
+    <string name="phone">Điện thoại</string>
+    <string name="website">Website</string>
+
 </resources>

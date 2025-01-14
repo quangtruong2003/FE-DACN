@@ -1,6 +1,9 @@
 package com.quangtruong.appbanlinhkien.model;
 
-public class Category {
+import java.io.Serializable;
+import java.util.List;
+
+public class Category implements Serializable {
     private Long categoryId;
     private String categoryName;
 

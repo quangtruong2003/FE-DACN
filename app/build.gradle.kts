@@ -58,4 +58,6 @@ dependencies {
     implementation("androidx.constraintlayout:constraintlayout:2.2.0")
     implementation("androidx.navigation:navigation-fragment:2.7.7")
     implementation("androidx.navigation:navigation-ui:2.7.7")
+    implementation ("com.fatboyindustrial.gson-javatime-serialisers:gson-javatime-serialisers:1.1.0")
+    implementation("com.google.code.gson:gson:2.8.9")
 }

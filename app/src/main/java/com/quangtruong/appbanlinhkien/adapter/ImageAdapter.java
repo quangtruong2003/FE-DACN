@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.quangtruong.appbanlinhkien.R;
+import com.quangtruong.appbanlinhkien.admin.ProductController;
 
 import java.util.List;
 
@@ -26,7 +27,7 @@ public class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.ImageViewHol
         void onImageRemove(int position);
     }
 
-    public ImageAdapter(List<Uri> imageUris, Context context, ImageRemoveListener listener) {
+    public ImageAdapter(List<Uri> imageUris, Context context, ProductController listener) {
         this.imageUris = imageUris;
         this.context = context;
         this.imageRemoveListener = listener;
@@ -56,6 +57,15 @@ public class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.ImageViewHol
     @Override
     public int getItemCount() {
         return imageUris.size();
+    }
+
+    // Thêm phương thức updateImages
+    public void updateImages(List<Uri> newImageUris) {
+        this.imageUris.clear();
+        if (newImageUris != null) {
+            this.imageUris.addAll(newImageUris);
+        }
+        notifyDataSetChanged();
     }
 
     public static class ImageViewHolder extends RecyclerView.ViewHolder {

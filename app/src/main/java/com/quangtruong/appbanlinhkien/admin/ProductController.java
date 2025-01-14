@@ -6,17 +6,14 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import com.cloudinary.android.callback.ErrorInfo;
 
 import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -43,11 +40,12 @@ import com.quangtruong.appbanlinhkien.R;
 import com.quangtruong.appbanlinhkien.adapter.ImageAdapter;
 import com.quangtruong.appbanlinhkien.api.ApiService;
 import com.quangtruong.appbanlinhkien.api.ApiUtils;
+import com.quangtruong.appbanlinhkien.dto.CategoryDTO;
 import com.quangtruong.appbanlinhkien.dto.ProductDTO;
+import com.quangtruong.appbanlinhkien.dto.SupplierDTO;
 import com.quangtruong.appbanlinhkien.model.Category;
 import com.quangtruong.appbanlinhkien.model.Supplier;
 import com.quangtruong.appbanlinhkien.request.CreateProductRequest;
-import com.quangtruong.appbanlinhkien.ui.product.ProductViewModel;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -61,6 +59,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import okhttp3.MediaType;
 import okhttp3.MultipartBody;
@@ -80,38 +80,33 @@ public class ProductController extends AppCompatActivity implements ImageAdapter
     private SwitchMaterial productActiveSwitch;
     private Button updateProductButton, chooseImageButton, takePhotoButton;
     private ApiService apiService;
-    private List<Category> categoryList;
-    private List<Supplier> supplierList;
+    private List<CategoryDTO> categoryList = new ArrayList<>();
+    private List<SupplierDTO> supplierList = new ArrayList<>();
     private List<Uri> selectedImageUris = new ArrayList<>();
     private ImageAdapter imageAdapter;
     private RecyclerView imagesRecyclerView;
-    private Cloudinary cloudinary;
     private Map<String, Long> categoryMap = new HashMap<>();
     private Map<String, Long> supplierMap = new HashMap<>();
     private Long selectedCategoryId;
     private Long selectedSupplierId;
     private ProgressBar progressBar;
     private Handler handler = new Handler(Looper.getMainLooper());
-    private ProductViewModel viewModel;
     private Long productId;
     private CountDownLatch loadDataLatch;
     private ActivityResultLauncher<Intent> chooseImageLauncher;
     private ActivityResultLauncher<Intent> takePhotoLauncher;
+    private ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_product_form);
-        // Khởi tạo Cloudinary
-        Map config = new HashMap();
-        config.put("cloud_name", "YOUR_CLOUD_NAME");
-        config.put("api_key", "YOUR_API_KEY");
-        config.put("api_secret", "YOUR_API_SECRET");
-        MediaManager.init(this, config);
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        }
         toolbar.setNavigationOnClickListener(v -> finish());
 
         apiService = new ApiUtils(this).createService(ApiService.class);
@@ -129,43 +124,15 @@ public class ProductController extends AppCompatActivity implements ImageAdapter
 
         chooseImageButton = findViewById(R.id.choose_image_button);
         takePhotoButton = findViewById(R.id.take_photo_button);
-
+        chooseImageButton.setOnClickListener(v -> chooseImageFromGallery());
+        takePhotoButton.setOnClickListener(v -> takePhotoWithCamera());
         imageAdapter = new ImageAdapter(selectedImageUris, this, this);
         imagesRecyclerView.setAdapter(imageAdapter);
         imagesRecyclerView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
 
+        // Khởi tạo
         loadDataLatch = new CountDownLatch(2);
-        loadCategories();
-        loadSuppliers();
-
-        // Lấy productId từ Intent
-        productId = getIntent().getLongExtra("PRODUCT_ID", -1);
-        // Log product id
-        Log.d("ActivityEdit", "productId: " + productId);
-        if (productId == -1) {
-            getSupportActionBar().setTitle("Thêm sản phẩm");
-        } else {
-            getSupportActionBar().setTitle("Cập nhật sản phẩm");
-            // Load thông tin sản phẩm nếu là sửa
-            new Thread(() -> {
-                try {
-                    loadDataLatch.await();
-                    handler.post(() -> loadProductDetails(productId));
-                } catch (InterruptedException e) {
-                    Log.e("ProductController", "Error waiting for data load", e);
-                }
-            }).start();
-        }
-
-        // Xử lý sự kiện click nút "Cập nhật" hoặc "thêm mới"
-        updateProductButton.setOnClickListener(v -> {
-            if (productId == -1) {
-                addProduct();
-            } else {
-                updateProduct(productId);
-            }
-        });
-
+        //Sửa ở đây
         chooseImageLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
@@ -177,13 +144,13 @@ public class ProductController extends AppCompatActivity implements ImageAdapter
                                 for (int i = 0; i < count; i++) {
                                     Uri imageUri = data.getClipData().getItemAt(i).getUri();
                                     selectedImageUris.add(imageUri);
-                                    imageAdapter.notifyItemInserted(selectedImageUris.size() - 1);
+
                                 }
                             } else if (data.getData() != null) {
                                 Uri imageUri = data.getData();
                                 selectedImageUris.add(imageUri);
-                                imageAdapter.notifyItemInserted(selectedImageUris.size() - 1);
                             }
+                            imageAdapter.notifyDataSetChanged();
                         }
                     }
                 }
@@ -198,37 +165,42 @@ public class ProductController extends AppCompatActivity implements ImageAdapter
                         // Chuyển Bitmap thành Uri và thêm vào danh sách
                         Uri imageUri = getImageUri(imageBitmap);
                         selectedImageUris.add(imageUri);
-                        imageAdapter.notifyItemInserted(selectedImageUris.size() - 1);
+                        imageAdapter.notifyDataSetChanged();
                     }
                 }
         );
-        chooseImageButton.setOnClickListener(v -> chooseImageFromGallery());
-        takePhotoButton.setOnClickListener(v -> takePhotoWithCamera());
+
+        // Load danh sách category và supplier
+        new Thread(() -> {
+            loadCategories();
+            loadSuppliers();
+            try {
+                loadDataLatch.await();
+                handler.post(() -> {
+                    // Lấy productId từ Intent
+                    String action = getIntent().getStringExtra("action");
+
+                    if ("edit".equals(action)) {
+                        productId = getIntent().getLongExtra("PRODUCT_ID", -1); // Chỉ lấy productId khi là edit mode
+                        getSupportActionBar().setTitle("Cập nhật sản phẩm");
+                        updateProductButton.setText("Cập nhật");
+                        loadProductDetails(productId);
+                        updateProductButton.setOnClickListener(v -> updateProduct(productId));
+                    } else { // "add" hoặc null
+                        getSupportActionBar().setTitle("Thêm sản phẩm");
+                        updateProductButton.setText("Thêm sản phẩm");
+                        updateProductButton.setOnClickListener(v -> addProduct());
+                    }
+                });
+
+            } catch (InterruptedException e) {
+                Log.e("ProductController", "Error waiting for data load", e);
+            }
+        }).start();
     }
 
-    private Uri getImageUri(Bitmap inImage) {
-        File tempDir = getFilesDir(); // Lấy thư mục lưu trữ nội bộ của ứng dụng
-        tempDir = new File(tempDir.getAbsolutePath() + "/.temp/"); // Thêm thư mục con .temp (nếu muốn)
-        tempDir.mkdir(); // Tạo thư mục nếu chưa tồn tại
-        File tempFile = null;
-        try {
-            tempFile = File.createTempFile("tempImage", ".jpg", tempDir); // Tạo file tạm
-            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-            inImage.compress(Bitmap.CompressFormat.JPEG, 100, bytes);
-            byte[] bitmapData = bytes.toByteArray();
 
-            // Ghi dữ liệu vào file
-            FileOutputStream fos = new FileOutputStream(tempFile);
-            fos.write(bitmapData);
-            fos.flush();
-            fos.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-            Toast.makeText(this, "Lỗi khi lưu ảnh", Toast.LENGTH_SHORT).show();
-        }
 
-        return Uri.fromFile(tempFile);
-    }
 
     private void takePhotoWithCamera() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
@@ -262,26 +234,31 @@ public class ProductController extends AppCompatActivity implements ImageAdapter
     private void chooseImageFromGallery() {
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
         intent.setType("image/*");
-        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true); // Cho phép chọn nhiều ảnh
+        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
         chooseImageLauncher.launch(Intent.createChooser(intent, "Select Picture"));
     }
-    private Bitmap resizeBitmap(Bitmap bitmap, int maxSize) {
-        int width = bitmap.getWidth();
-        int height = bitmap.getHeight();
 
-        if (width <= maxSize && height <= maxSize) {
-            return bitmap;
+    private Uri getImageUri(Bitmap inImage) {
+        File tempDir = getFilesDir();
+        tempDir = new File(tempDir.getAbsolutePath() + "/.temp/");
+        tempDir.mkdir();
+        File tempFile = null;
+        try {
+            tempFile = File.createTempFile("tempImage", ".jpg", tempDir);
+            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+            inImage.compress(Bitmap.CompressFormat.JPEG, 100, bytes);
+            byte[] bitmapData = bytes.toByteArray();
+
+            FileOutputStream fos = new FileOutputStream(tempFile);
+            fos.write(bitmapData);
+            fos.flush();
+            fos.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+            Toast.makeText(this, "Lỗi khi lưu ảnh", Toast.LENGTH_SHORT).show();
         }
 
-        float bitmapRatio = (float) width / (float) height;
-        if (bitmapRatio > 1) {
-            width = maxSize;
-            height = (int) (width / bitmapRatio);
-        } else {
-            height = maxSize;
-            width = (int) (height * bitmapRatio);
-        }
-        return Bitmap.createScaledBitmap(bitmap, width, height, true);
+        return Uri.fromFile(tempFile);
     }
 
     private void loadProductDetails(Long productId) {
@@ -324,13 +301,14 @@ public class ProductController extends AppCompatActivity implements ImageAdapter
                     productActiveSwitch.setChecked(product.isActive());
 
                     // Hiển thị hình ảnh (nếu có)
+                    selectedImageUris.clear();
                     if (product.getImages() != null && !product.getImages().isEmpty()) {
-                        selectedImageUris.clear();
                         for (String imageUrl : product.getImages()) {
                             selectedImageUris.add(Uri.parse(imageUrl));
                         }
-                        imageAdapter.notifyDataSetChanged();
                     }
+                    imageAdapter.updateImages(selectedImageUris);
+                    imageAdapter.notifyDataSetChanged();
                 } else {
                     Toast.makeText(ProductController.this, "Failed to load product details", Toast.LENGTH_SHORT).show();
                 }
@@ -353,7 +331,7 @@ public class ProductController extends AppCompatActivity implements ImageAdapter
         String categoryName = productCategorySpinner.getSelectedItem().toString();
         Long categoryId = null;
         // Tìm categoryId dựa vào categoryName
-        for (Category category : categoryList) {
+        for (CategoryDTO category : categoryList) { // Sửa Category thành CategoryDTO
             if (category.getCategoryName().equals(categoryName)) {
                 categoryId = category.getCategoryId();
                 break;
@@ -363,7 +341,7 @@ public class ProductController extends AppCompatActivity implements ImageAdapter
         // Lấy supplierName từ Spinner
         String supplierName = productSupplierSpinner.getSelectedItem().toString();
         Long supplierId = null;
-        for(Supplier supplier : supplierList){
+        for(SupplierDTO supplier : supplierList){
             if(supplier.getSupplierName().equals(supplierName)){
                 supplierId = supplier.getSupplierId();
                 break;
@@ -402,45 +380,31 @@ public class ProductController extends AppCompatActivity implements ImageAdapter
         request.setUnitsInStock(productStock);
         request.setDescription(productDescription);
         request.setActive(productActive);
-        Log.d("ActivityEdit", "productActiveSwitch.isChecked(): " + productActiveSwitch.isChecked());
-        Log.d("ActivityEdit", "updateProduct request: " + request.toString());
-        Gson gson = new Gson();
-        Log.d("ActivityEdit", "updateProduct request: " + gson.toJson(request));
+        request.setImages(new ArrayList<>()); //khởi tạo images
 
         // Gọi API để cập nhật sản phẩm
         progressBar.setVisibility(View.VISIBLE);
-        apiService.updateProduct(productId, request).enqueue(new Callback<ProductDTO>() {
-            @Override
-            public void onResponse(Call<ProductDTO> call, Response<ProductDTO> response) {
-                progressBar.setVisibility(View.GONE);
-                if (response.isSuccessful()) {
-                    Toast.makeText(ProductController.this, "Cập nhật sản phẩm thành công", Toast.LENGTH_SHORT).show();
-                    setResult(Activity.RESULT_OK);
-                    finish();
-                } else {
-                    Toast.makeText(ProductController.this, "Cập nhật sản phẩm thất bại", Toast.LENGTH_SHORT).show();
-                }
-            }
 
-            @Override
-            public void onFailure(Call<ProductDTO> call, Throwable t) {
-                progressBar.setVisibility(View.GONE);
-                Toast.makeText(ProductController.this, "Lỗi: " + t.getMessage(), Toast.LENGTH_SHORT).show();
-            }
-        });
+        if (selectedImageUris != null && !selectedImageUris.isEmpty()) {
+            uploadImages(request, productId);
+        } else {
+            updateProductAndImages(productId, request);
+        }
+
     }
 
     private void loadCategories() {
-        apiService.getAllCategories().enqueue(new Callback<List<Category>>() {
+        apiService.getAllCategories().enqueue(new Callback<List<CategoryDTO>>() { // Sửa lại thành List<CategoryDTO>
             @Override
-            public void onResponse(Call<List<Category>> call, Response<List<Category>> response) {
+            public void onResponse(Call<List<CategoryDTO>> call, Response<List<CategoryDTO>> response) {
                 if (response.isSuccessful()) {
+                    //Sửa lại
                     categoryList = response.body();
                     List<String> categoryNames = new ArrayList<>();
-                    categoryMap.clear(); // Xóa dữ liệu cũ trong Map
-                    for (Category category : categoryList) {
+                    categoryMap.clear();
+                    for (CategoryDTO category : categoryList) {
                         categoryNames.add(category.getCategoryName());
-                        categoryMap.put(category.getCategoryName(), category.getCategoryId()); // Thêm vào Map
+                        categoryMap.put(category.getCategoryName(), category.getCategoryId());
                     }
                     ArrayAdapter<String> adapter = new ArrayAdapter<>(ProductController.this, android.R.layout.simple_spinner_item, categoryNames);
                     adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -457,6 +421,7 @@ public class ProductController extends AppCompatActivity implements ImageAdapter
                             selectedCategoryId = null;
                         }
                     });
+                    //
                     loadDataLatch.countDown();
                 } else {
                     handler.post(() -> Toast.makeText(ProductController.this, R.string.failed_to_load_categories, Toast.LENGTH_SHORT).show());
@@ -464,24 +429,48 @@ public class ProductController extends AppCompatActivity implements ImageAdapter
             }
 
             @Override
-            public void onFailure(Call<List<Category>> call, Throwable t) {
+            public void onFailure(Call<List<CategoryDTO>> call, Throwable t) { // Sửa lại thành List<CategoryDTO>
                 handler.post(() -> Toast.makeText(ProductController.this, getString(R.string.error) + t.getMessage(), Toast.LENGTH_SHORT).show());
                 Log.e("API_Error", "Failed to load categories", t);
+                loadDataLatch.countDown();
             }
         });
     }
+    private void setSelectedCategory() {
+        // Logic để set selected category cho Spinner
+        if (productId != null && categoryList != null) {
+            apiService.getProduct(productId).enqueue(new Callback<ProductDTO>() {
+                @Override
+                public void onResponse(Call<ProductDTO> call, Response<ProductDTO> response) {
+                    if (response.isSuccessful() && response.body() != null) {
+                        ProductDTO product = response.body();
+                        for (int i = 0; i < categoryList.size(); i++) {
+                            if (categoryList.get(i).getCategoryId().equals(product.getCategoryId())) {
+                                productCategorySpinner.setSelection(i);
+                                break;
+                            }
+                        }
+                    }
+                }
 
+                @Override
+                public void onFailure(Call<ProductDTO> call, Throwable t) {
+                    Log.e("API_Error", "Failed to get product for setting category", t);
+                }
+            });
+        }
+    }
     private void loadSuppliers() {
-        apiService.getAllSuppliers().enqueue(new Callback<List<Supplier>>() {
+        apiService.getAllAdminSuppliers().enqueue(new Callback<List<SupplierDTO>>() { // Sửa lại getAllAdminSuppliers()
             @Override
-            public void onResponse(Call<List<Supplier>> call, Response<List<Supplier>> response) {
+            public void onResponse(Call<List<SupplierDTO>> call, Response<List<SupplierDTO>> response) {
                 if (response.isSuccessful()) {
                     supplierList = response.body();
                     List<String> supplierNames = new ArrayList<>();
-                    supplierMap.clear(); // Xóa dữ liệu cũ trong Map
-                    for (Supplier supplier : supplierList) {
+                    supplierMap.clear();
+                    for (SupplierDTO supplier : supplierList) {
                         supplierNames.add(supplier.getSupplierName());
-                        supplierMap.put(supplier.getSupplierName(), supplier.getSupplierId()); // Thêm vào Map
+                        supplierMap.put(supplier.getSupplierName(), supplier.getSupplierId());
                     }
                     ArrayAdapter<String> adapter = new ArrayAdapter<>(ProductController.this, android.R.layout.simple_spinner_item, supplierNames);
                     adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -498,6 +487,7 @@ public class ProductController extends AppCompatActivity implements ImageAdapter
                             selectedSupplierId = null;
                         }
                     });
+
                     loadDataLatch.countDown();
                 } else {
                     handler.post(() -> Toast.makeText(ProductController.this, R.string.failed_to_load_suppliers, Toast.LENGTH_SHORT).show());
@@ -505,18 +495,42 @@ public class ProductController extends AppCompatActivity implements ImageAdapter
             }
 
             @Override
-            public void onFailure(Call<List<Supplier>> call, Throwable t) {
+            public void onFailure(Call<List<SupplierDTO>> call, Throwable t) {
                 handler.post(() -> Toast.makeText(ProductController.this, getString(R.string.error) + t.getMessage(), Toast.LENGTH_SHORT).show());
                 Log.e("API_Error", "Failed to load suppliers", t);
+                loadDataLatch.countDown();
             }
         });
+    }
+    private void setSelectedSupplier() {
+        // Logic để set selected supplier cho Spinner
+        if (productId != null && supplierList != null) {
+            apiService.getProduct(productId).enqueue(new Callback<ProductDTO>() {
+                @Override
+                public void onResponse(Call<ProductDTO> call, Response<ProductDTO> response) {
+                    if (response.isSuccessful() && response.body() != null) {
+                        ProductDTO product = response.body();
+                        for (int i = 0; i < supplierList.size(); i++) {
+                            if (supplierList.get(i).getSupplierId().equals(product.getSupplierId())) {
+                                productSupplierSpinner.setSelection(i);
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                @Override
+                public void onFailure(Call<ProductDTO> call, Throwable t) {
+                    Log.e("API_Error", "Failed to get product for setting supplier", t);
+                }
+            });
+        }
     }
     @Override
     public void onImageRemove(int position) {
         selectedImageUris.remove(position);
         imageAdapter.notifyItemRemoved(position);
     }
-
 
     private void addProduct() {
         String productName = productNameEditText.getText().toString().trim();
@@ -558,21 +572,33 @@ public class ProductController extends AppCompatActivity implements ImageAdapter
         }
     }
 
-    private byte[] getBytesFromInputStream(InputStream inputStream) throws IOException {
-        ByteArrayOutputStream byteBuffer = new ByteArrayOutputStream();
-        int bufferSize = 1024;
-        byte[] buffer = new byte[bufferSize];
-        int len;
-        while ((len = inputStream.read(buffer)) != -1) {
-            byteBuffer.write(buffer, 0, len);
-        }
-        return byteBuffer.toByteArray();
+    private void addProductToDatabase(CreateProductRequest request) {
+        apiService.addProduct(request).enqueue(new Callback<ProductDTO>() {
+            @Override
+            public void onResponse(Call<ProductDTO> call, Response<ProductDTO> response) {
+                progressBar.setVisibility(View.GONE);
+                if (response.isSuccessful()) {
+                    Toast.makeText(ProductController.this, "Thêm sản phẩm thành công", Toast.LENGTH_SHORT).show();
+                    selectedImageUris.clear();//xóa selectedImageUris
+                    setResult(Activity.RESULT_OK);
+                    finish();
+                } else {
+                    Toast.makeText(ProductController.this, "Thêm sản phẩm thất bại", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ProductDTO> call, Throwable t) {
+                progressBar.setVisibility(View.GONE);
+                Toast.makeText(ProductController.this, "Lỗi: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void uploadImages(CreateProductRequest productRequest, Long productId) {
         if (selectedImageUris.isEmpty()) {
             progressBar.setVisibility(View.GONE);
-            if (productId == null) {
+            if (productId == null || productId == -1) {
                 addProductToDatabase(productRequest);
             } else {
                 updateProductAndImages(productId, productRequest);
@@ -585,40 +611,32 @@ public class ProductController extends AppCompatActivity implements ImageAdapter
         final int[] uploadedImages = {0};
 
         for (Uri imageUri : selectedImageUris) {
-            // Tạo background thread để upload ảnh
-            new Thread(() -> {
+            executorService.execute(() -> {
                 try {
-                    // Mở InputStream từ Uri
-                    InputStream inputStream = getContentResolver().openInputStream(imageUri);
-
-                    // Upload ảnh lên Cloudinary sử dụng MediaManager
-                    String publicId = "product_" + System.currentTimeMillis(); // Tạo public ID cho ảnh
+                    String publicId = "product_" + System.currentTimeMillis();
                     MediaManager.get().upload(imageUri)
                             .option("public_id", publicId)
-                            .option("folder", "product_images/") // Thư mục trên Cloudinary (tùy chọn)
+                            .option("folder", "product_images/")
                             .option("resource_type", "image")
-                            .callback(new UploadCallback() { // Thay đổi UploadResultCallback thành UploadCallback
+                            .callback(new UploadCallback() {
                                 @Override
                                 public void onStart(String requestId) {
-                                    // Bắt đầu upload
                                     Log.d("Upload", "Upload started for requestId: " + requestId);
+                                    handler.post(() -> progressBar.setVisibility(View.VISIBLE));
                                 }
 
                                 @Override
                                 public void onProgress(String requestId, long bytes, long totalBytes) {
-                                    // Tiến trình upload
                                     Double progress = (double) bytes / totalBytes;
                                     Log.d("Upload", "Upload progress for requestId: " + requestId + ", progress: " + progress);
                                 }
 
                                 @Override
                                 public void onSuccess(String requestId, Map resultData) {
-                                    // Upload thành công
                                     String imageUrl = (String) resultData.get("secure_url");
                                     imageUrls.add(imageUrl);
                                     uploadedImages[0]++;
 
-                                    // Nếu đã upload hết ảnh
                                     if (uploadedImages[0] == totalImages) {
                                         handler.post(() -> {
                                             progressBar.setVisibility(View.GONE);
@@ -634,7 +652,6 @@ public class ProductController extends AppCompatActivity implements ImageAdapter
 
                                 @Override
                                 public void onError(String requestId, ErrorInfo error) {
-                                    // Lỗi khi upload
                                     Log.e("Upload", "Error uploading image for requestId: " + requestId + ", error: " + error.getDescription());
                                     handler.post(() -> {
                                         progressBar.setVisibility(View.GONE);
@@ -644,20 +661,18 @@ public class ProductController extends AppCompatActivity implements ImageAdapter
 
                                 @Override
                                 public void onReschedule(String requestId, ErrorInfo error) {
-                                    // Upload được lên lịch lại (ít khi xảy ra)
                                     Log.d("Upload", "Upload rescheduled for requestId: " + requestId + ", error: " + error.getDescription());
                                 }
                             })
-                            .dispatch(); // Bắt đầu upload
-
-                } catch (IOException e) {
-                    Log.e("UploadImages", "Failed to open InputStream", e);
+                            .dispatch();
+                } catch (Exception e) {
+                    Log.e("UploadImages", "Failed to upload image", e);
                     handler.post(() -> {
                         progressBar.setVisibility(View.GONE);
-                        Toast.makeText(ProductController.this, "Lỗi khi mở ảnh", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(ProductController.this, "Lỗi khi upload ảnh", Toast.LENGTH_SHORT).show();
                     });
                 }
-            }).start(); // Bắt đầu background thread
+            });
         }
     }
 
@@ -668,6 +683,7 @@ public class ProductController extends AppCompatActivity implements ImageAdapter
                 progressBar.setVisibility(View.GONE);
                 if (response.isSuccessful()) {
                     Toast.makeText(ProductController.this, "Cập nhật sản phẩm thành công", Toast.LENGTH_SHORT).show();
+                    selectedImageUris.clear();//xóa selectedImageUris
                     setResult(Activity.RESULT_OK);
                     finish();
                 } else {
@@ -688,28 +704,29 @@ public class ProductController extends AppCompatActivity implements ImageAdapter
         });
     }
 
-    private void addProductToDatabase(CreateProductRequest request) {
-        apiService.addProduct(request).enqueue(new Callback<ProductDTO>() {
-            @Override
-            public void onResponse(Call<ProductDTO> call, Response<ProductDTO> response) {
-                progressBar.setVisibility(View.GONE);
-                if (response.isSuccessful()) {
-                    Toast.makeText(ProductController.this, "Thêm sản phẩm thành công", Toast.LENGTH_SHORT).show();
-                    setResult(Activity.RESULT_OK);
-                    finish();
-                } else {
-                    Toast.makeText(ProductController.this, "Thêm sản phẩm thất bại", Toast.LENGTH_SHORT).show();
-                }
-            }
+    private Bitmap resizeBitmap(Bitmap bitmap, int maxSize) {
+        int width = bitmap.getWidth();
+        int height = bitmap.getHeight();
 
-            @Override
-            public void onFailure(Call<ProductDTO> call, Throwable t) {
-                progressBar.setVisibility(View.GONE);
-                Toast.makeText(ProductController.this, "Lỗi: " + t.getMessage(), Toast.LENGTH_SHORT).show();
-            }
-        });
+        if (width <= maxSize && height <= maxSize) {
+            return bitmap;
+        }
+
+        float bitmapRatio = (float) width / (float) height;
+        if (bitmapRatio > 1) {
+            width = maxSize;
+            height = (int) (width / bitmapRatio);
+        } else {
+            height = maxSize;
+            width = (int) (height * bitmapRatio);
+        }
+        return Bitmap.createScaledBitmap(bitmap, width, height, true);
     }
-
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        executorService.shutdown();
+    }
     private void checkProductNameExists(String productName, Runnable onComplete) {
 
     }
