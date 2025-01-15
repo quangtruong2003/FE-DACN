@@ -39,7 +39,7 @@ public class CategoryActivity extends AppCompatActivity implements CategoryAdapt
 
     private RecyclerView categoryRecyclerView;
     private CategoryAdapter categoryAdapter;
-    private List<CategoryDTO> categoryList; // Sửa thành List<CategoryDTO>
+    private List<CategoryDTO> categoryList;
     private ApiService apiService;
     private SwipeRefreshLayout swipeRefreshLayout;
     private FloatingActionButton fabAddCategory;
@@ -130,7 +130,7 @@ public class CategoryActivity extends AppCompatActivity implements CategoryAdapt
 
     private void loadCategories() {
         swipeRefreshLayout.setRefreshing(true);
-        apiService.getAllCategories().enqueue(new Callback<List<CategoryDTO>>() { // Sửa lại thành List<CategoryDTO>
+        apiService.getAllCategories().enqueue(new Callback<List<CategoryDTO>>() {
             @Override
             public void onResponse(Call<List<CategoryDTO>> call, Response<List<CategoryDTO>> response) {
                 swipeRefreshLayout.setRefreshing(false);
@@ -157,7 +157,7 @@ public class CategoryActivity extends AppCompatActivity implements CategoryAdapt
     }
 
     @Override
-    public void onCategoryClick(CategoryDTO category) { // Sửa tham số thành CategoryDTO
+    public void onCategoryClick(CategoryDTO category) {
         Intent intent = new Intent(this, AddEditCategoryActivity.class);
         intent.setAction(AddEditCategoryActivity.ACTION_EDIT);
         intent.putExtra(AddEditCategoryActivity.EXTRA_CATEGORY, category.getCategoryId()); //Truyền categoryId
@@ -165,7 +165,7 @@ public class CategoryActivity extends AppCompatActivity implements CategoryAdapt
     }
 
     @Override
-    public void onCategoryLongClick(CategoryDTO category) { // Sửa tham số thành CategoryDTO
+    public void onCategoryLongClick(CategoryDTO category) {
         new AlertDialog.Builder(this)
                 .setTitle("Xóa danh mục")
                 .setMessage("Bạn có chắc chắn muốn xóa danh mục " + category.getCategoryName() + "?")
@@ -176,7 +176,7 @@ public class CategoryActivity extends AppCompatActivity implements CategoryAdapt
     }
 
     private void deleteCategory(Long categoryId) {
-        apiService.deleteCategory(categoryId).enqueue(new Callback<Void>() { // Sửa lại
+        apiService.deleteCategory(categoryId).enqueue(new Callback<Void>() {
             @Override
             public void onResponse(Call<Void> call, Response<Void> response) {
                 if (response.isSuccessful()) {

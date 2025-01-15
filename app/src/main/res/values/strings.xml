@@ -73,5 +73,24 @@
     <string name="address">Địa chỉ</string>
     <string name="phone">Điện thoại</string>
     <string name="website">Website</string>
-
+    <string name="menu">Menu</string>
+    <string name="my_basket">My basket</string>
+    <string name="basket">Basket</string>
+    <string name="hello_tony_what_fruit_salad_combo_do_you_want_today">Hello Tony, What fruit salad combo do you want today?</string>
+    <string name="search_for_fruit_salad_combos">Search for fruit salad combos</string>
+    <string name="filter">Filter</string>
+    <string name="recommended_combo">Recommended Combo</string>
+    <string name="honey_lime_combo">Honey lime combo</string>
+    <string name="_2_000">₦ 2,000</string>
+    <string name="add_to_cart">Add to Cart</string>
+    <string name="berry_mango_combo">Berry mango combo</string>
+    <string name="_8_000">₦ 8,000</string>
+    <string name="hottest">Hottest</string>
+    <string name="popular">Popular</string>
+    <string name="new_combo">New combo</string>
+    <string name="top">Top</string>
+    <string name="quinoa_fruit_salad">Quinoa fruit salad</string>
+    <string name="_10_000">₦ 10,000</string>
+    <string name="tropical_fruit_salad">Tropical fruit salad</string>
+    <string name="favorite">Favorite</string>
 </resources>

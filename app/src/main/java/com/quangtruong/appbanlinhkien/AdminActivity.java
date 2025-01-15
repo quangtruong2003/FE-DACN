@@ -27,6 +27,7 @@ public class AdminActivity extends AppCompatActivity {
         // Kiểm tra đăng nhập
         if (!isLoggedIn()) {
             redirectToLogin();
+            return;
         }
 
         Toolbar toolbar = findViewById(R.id.toolbar);
@@ -102,6 +103,7 @@ public class AdminActivity extends AppCompatActivity {
         SharedPreferences sharedPreferences = getSharedPreferences("MySharedPref", MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPreferences.edit();
         editor.remove("token");
+        editor.remove("role"); // Xóa role
         editor.apply();
 
         // Chuyển về LoginActivity
@@ -114,7 +116,13 @@ public class AdminActivity extends AppCompatActivity {
     private boolean isLoggedIn() {
         SharedPreferences sharedPreferences = getSharedPreferences("MySharedPref", MODE_PRIVATE);
         String token = sharedPreferences.getString("token", null);
-        return token != null;
+        String role = sharedPreferences.getString("role",null);
+        // Check expired token
+        if (token != null && role.equals("employee")) {
+            return true;
+        } else {
+            return false;
+        }
     }
 
     private void redirectToLogin() {

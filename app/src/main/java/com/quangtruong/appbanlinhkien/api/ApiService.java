@@ -4,6 +4,7 @@ import com.quangtruong.appbanlinhkien.dto.ProductDTO;
 import com.quangtruong.appbanlinhkien.dto.SupplierDTO;
 import com.quangtruong.appbanlinhkien.model.AuthResponse;
 import com.quangtruong.appbanlinhkien.model.Category;
+import com.quangtruong.appbanlinhkien.model.Customer;
 import com.quangtruong.appbanlinhkien.model.LoginRequest;
 import com.quangtruong.appbanlinhkien.model.Product;
 import com.quangtruong.appbanlinhkien.model.Supplier;
@@ -29,6 +30,7 @@ import com.quangtruong.appbanlinhkien.dto.CategoryDTO;
 public interface ApiService {
     @POST("api/auth/login")
     Call<AuthResponse> login(@Body LoginRequest loginRequest);
+
 
     @POST("api/auth/employee/login")
     Call<AuthResponse> loginEmployee(@Body LoginRequest loginRequest);
@@ -89,4 +91,5 @@ public interface ApiService {
 
     @DELETE("api/admin/suppliers/{id}")
     Call<Void> deleteSupplier(@Path("id") Long id);
+
 }

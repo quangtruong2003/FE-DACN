@@ -34,7 +34,7 @@ public class AddEditSupplierActivity extends AppCompatActivity {
     private Button saveButton;
     private Button cancelButton;
     private String action;
-    private Long supplierId; // Sử dụng Long thay vì Category
+    private Long supplierId;
     private ApiService apiService;
 
     @Override

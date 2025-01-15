@@ -1,11 +1,16 @@
 package com.quangtruong.appbanlinhkien;
 
 import android.app.Application;
+
+import androidx.compose.ui.text.font.Typeface;
+
 import com.cloudinary.android.MediaManager;
 import java.util.HashMap;
 import java.util.Map;
 
 public class MyApplication extends Application {
+
+    public static Typeface lucidaCalligraphyTypeface;
 
     @Override
     public void onCreate() {

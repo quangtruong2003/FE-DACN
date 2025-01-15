@@ -17,6 +17,7 @@ public class Product implements Serializable {
     private List<String> images;
     private boolean active;
 
+
     // Constructors, Getters, and Setters
 
     public Product() {

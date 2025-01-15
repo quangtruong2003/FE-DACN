@@ -60,4 +60,12 @@ dependencies {
     implementation("androidx.navigation:navigation-ui:2.7.7")
     implementation ("com.fatboyindustrial.gson-javatime-serialisers:gson-javatime-serialisers:1.1.0")
     implementation("com.google.code.gson:gson:2.8.9")
+
+
+
+    implementation("androidx.compose.material:material:1.5.4")
+    implementation("androidx.compose.ui:ui:1.5.4")
+    implementation("androidx.compose.ui:ui-tooling-preview:1.5.4")
+
+    implementation("com.google.android.material:material:1.2.1")
 }

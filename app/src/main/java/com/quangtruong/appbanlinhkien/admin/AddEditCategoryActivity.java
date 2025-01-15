@@ -33,7 +33,7 @@ public class AddEditCategoryActivity extends AppCompatActivity {
     private Button saveButton;
     private Button cancelButton;
     private String action;
-    private Category category;
+    private Long categoryId;
     private ApiService apiService;
 
     @Override
@@ -52,45 +52,52 @@ public class AddEditCategoryActivity extends AppCompatActivity {
         apiService = ApiUtils.createService(ApiService.class);
 
         // Check if it's add or edit mode
-        // Check if it's add or edit mode
         Intent intent = getIntent();
         action = intent.getAction();
         if (ACTION_EDIT.equals(action)) {
-            // Lấy categoryId từ Intent thay vì category
-            Long categoryId = intent.getLongExtra(EXTRA_CATEGORY, -1);
+            categoryId = intent.getLongExtra(EXTRA_CATEGORY, -1);
             if (categoryId == -1) {
-                // Xử lý trường hợp lỗi
                 Toast.makeText(this, "CategoryId is missing", Toast.LENGTH_SHORT).show();
                 finish();
                 return;
             }
 
-            // Gọi API để lấy thông tin chi tiết của Category dựa vào categoryId
-            apiService.getCategoryById(categoryId).enqueue(new Callback<CategoryDTO>() {
-                @Override
-                public void onResponse(Call<CategoryDTO> call, Response<CategoryDTO> response) {
-                    if (response.isSuccessful() && response.body() != null) {
-                        CategoryDTO categoryDTO = response.body();
-                        // Hiển thị thông tin category lên EditText
-                        categoryNameEditText.setText(categoryDTO.getCategoryName());
-                    } else {
-                        Toast.makeText(AddEditCategoryActivity.this, "Failed to load category details", Toast.LENGTH_SHORT).show();
-                    }
-                }
-
-                @Override
-                public void onFailure(Call<CategoryDTO> call, Throwable t) {
-                    Toast.makeText(AddEditCategoryActivity.this, "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
-                    Log.e("API_Error", "Failed to load category details", t);
-                }
-            });
+            // Load category details for editing
+            loadCategoryDetails(categoryId);
         }
 
-        saveButton.setOnClickListener(v -> saveCategory());
+        //saveButton.setOnClickListener(v -> saveCategory());
+
+        saveButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                saveCategory();
+            }
+        });
 
         cancelButton.setOnClickListener(v -> {
             setResult(Activity.RESULT_CANCELED);
             finish();
+        });
+    }
+
+    private void loadCategoryDetails(Long categoryId) {
+        apiService.getCategoryById(categoryId).enqueue(new Callback<CategoryDTO>() {
+            @Override
+            public void onResponse(Call<CategoryDTO> call, Response<CategoryDTO> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    CategoryDTO categoryDTO = response.body();
+                    categoryNameEditText.setText(categoryDTO.getCategoryName());
+                } else {
+                    Toast.makeText(AddEditCategoryActivity.this, "Failed to load category details", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<CategoryDTO> call, Throwable t) {
+                Toast.makeText(AddEditCategoryActivity.this, "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                Log.e("API_Error", "Failed to load category details", t);
+            }
         });
     }
 
@@ -114,31 +121,16 @@ public class AddEditCategoryActivity extends AppCompatActivity {
                         setResult(Activity.RESULT_OK);
                         finish();
                     } else {
-                        Log.e("API_Error", "Response Code: " + response.code());
-                        try {
-                            Log.e("API_Error", "Response Body: " + response.errorBody().string());
-                        } catch (Exception e) {
-                            Log.e("API_Error", "Error reading response body", e);
-                        }
-                        Toast.makeText(AddEditCategoryActivity.this, "Thêm danh mục thất bại", Toast.LENGTH_SHORT).show();
+                        handleResponseError(response);
                     }
                 }
 
                 @Override
                 public void onFailure(Call<CategoryDTO> call, Throwable t) {
-                    Toast.makeText(AddEditCategoryActivity.this, "Lỗi: " + t.getMessage(), Toast.LENGTH_SHORT).show();
-                    Log.e("API_Error", "Failed to add product", t);
+                    handleFailure(t);
                 }
             });
         } else {
-            // Lấy categoryId từ Intent
-            Long categoryId = getIntent().getLongExtra(EXTRA_CATEGORY, -1);
-            if (categoryId == -1) {
-                // Xử lý trường hợp lỗi
-                Toast.makeText(this, "CategoryId is missing", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
             // Update existing category
             apiService.updateCategory(categoryId, newCategory).enqueue(new Callback<CategoryDTO>() {
                 @Override
@@ -147,16 +139,30 @@ public class AddEditCategoryActivity extends AppCompatActivity {
                         setResult(Activity.RESULT_OK);
                         finish();
                     } else {
-                        Toast.makeText(AddEditCategoryActivity.this, "Cập nhật danh mục thất bại", Toast.LENGTH_SHORT).show();
+                        handleResponseError(response);
                     }
                 }
 
                 @Override
                 public void onFailure(Call<CategoryDTO> call, Throwable t) {
-                    Toast.makeText(AddEditCategoryActivity.this, "Lỗi: " + t.getMessage(), Toast.LENGTH_SHORT).show();
-                    Log.e("API_Error", "Failed to update category", t);
+                    handleFailure(t);
                 }
             });
         }
+    }
+
+    private void handleResponseError(Response<?> response) {
+        Log.e("API_Error", "Response Code: " + response.code());
+        try {
+            Log.e("API_Error", "Response Body: " + response.errorBody().string());
+        } catch (Exception e) {
+            Log.e("API_Error", "Error reading response body", e);
+        }
+        Toast.makeText(AddEditCategoryActivity.this, "Thao tác thất bại", Toast.LENGTH_SHORT).show();
+    }
+
+    private void handleFailure(Throwable t) {
+        Toast.makeText(AddEditCategoryActivity.this, "Lỗi: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+        Log.e("API_Error", "Failed to perform operation", t);
     }
 }

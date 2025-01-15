@@ -64,9 +64,7 @@ public class LoginActivity extends AppCompatActivity {
         registerTextView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                // TODO: Navigate to Register Activity/Fragment
-                // Example using Intent (replace with your RegisterActivity)
-                // startActivity(new Intent(LoginActivity.this, RegisterActivity.class));
+
             }
         });
     }
@@ -76,29 +74,53 @@ public class LoginActivity extends AppCompatActivity {
 
         Log.d("LOGIN", "Email: " + email + ", Password: " + password);
 
-        Call<AuthResponse> call = apiService.loginEmployee(loginRequest);
+        Call<AuthResponse> call = apiService.login(loginRequest);
         call.enqueue(new Callback<AuthResponse>() {
             @Override
             public void onResponse(Call<AuthResponse> call, Response<AuthResponse> response) {
                 if (response.isSuccessful()) {
                     AuthResponse authResponse = response.body();
                     String token = authResponse.getJwt();
+                    String message = authResponse.getMessage();
+                    Log.d("LOGIN", "Email: " + email);
 
-                    // Log thông tin response
                     Log.d("LOGIN", "Response: " + response.body().toString());
                     Log.d("LOGIN", "Response code: " + response.code());
                     Log.d("LOGIN", "Token: " + token);
+                    Log.d("LOGIN", "Message: " + message);
 
-                    // Lưu token vào SharedPreferences
                     SharedPreferences sharedPreferences = getSharedPreferences("MySharedPref", MODE_PRIVATE);
                     SharedPreferences.Editor myEdit = sharedPreferences.edit();
                     myEdit.putString("token", token);
+                    myEdit.putString("role", message);
+                    myEdit.putString("email", email);
+
+                    if(message.equals("customer")){
+                        myEdit.putString("name", email);
+                    } else {
+                        myEdit.putString("name", "Admin");
+                    }
                     myEdit.apply();
 
-                    // Chuyển sang AdminActivity (đối với Employee)
-                    Intent intent = new Intent(LoginActivity.this, AdminActivity.class);
-                    startActivity(intent);
-                    finish(); // Đóng LoginActivity
+                    // Log thông tin lưu vào SharedPreferences
+                    Log.d("LoginActivity", "Saved to SharedPreferences:");
+                    Log.d("LoginActivity", "  token: " + token);
+                    Log.d("LoginActivity", "  role: " + message);
+                    Log.d("LoginActivity", "  email: " + email);
+                    Log.d("LoginActivity", "  name: " + sharedPreferences.getString("name", ""));
+
+                    // Chuyển activity dựa vào role
+                    if ("employee".equals(message)) {
+                        Intent intent = new Intent(LoginActivity.this, AdminActivity.class);
+                        startActivity(intent);
+                        // finish();
+                    } else if ("customer".equals(message)) {
+                        Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                        startActivity(intent);
+                        // finish();
+                    } else {
+                        Toast.makeText(LoginActivity.this, "Lỗi không xác định", Toast.LENGTH_SHORT).show();
+                    }
 
                 } else {
                     // Xử lý lỗi đăng nhập
@@ -124,12 +146,21 @@ public class LoginActivity extends AppCompatActivity {
     private void checkLoginStatus() {
         SharedPreferences sharedPreferences = getSharedPreferences("MySharedPref", MODE_PRIVATE);
         String token = sharedPreferences.getString("token", null);
+        String role = sharedPreferences.getString("role", null);
 
-        if (token != null) {
-            // Đã đăng nhập, chuyển đến AdminActivity
-            Intent intent = new Intent(LoginActivity.this, AdminActivity.class);
-            startActivity(intent);
-            finish();
+        if (token != null && role != null) {
+            // Đã đăng nhập
+            if (role.equals("employee")) {
+                // Chuyển đến AdminActivity
+                Intent intent = new Intent(LoginActivity.this, AdminActivity.class);
+                startActivity(intent);
+                finish();
+            } else if (role.equals("customer")) {
+                // Chuyển đến MainActivity
+                Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                startActivity(intent);
+                finish();
+            }
         }
     }
 }
